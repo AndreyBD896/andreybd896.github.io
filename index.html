@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Мобильный кликер</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: white;
+            margin: 0;
+            padding: 20px;
+            touch-action: manipulation; /* Предотвращает некоторые жесты масштабирования */
+            -webkit-user-select: none; /* Запрет выделения текста на iOS */
+            user-select: none; /* Запрет выделения текста */
+        }
+        #clicker {
+            font-size: 24px;
+            padding: 15px 30px;
+            margin: 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent; /* Убирает подсветку при тапе на мобильных */
+        }
+        #clicker:hover {
+            background-color: #45a049;
+        }
+        #score {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 20px;
+        }
+        #counter {
+            font-size: 18px;
+            margin: 10px;
+        }
+        #reset {
+            margin-top: 20px;
+            padding: 8px 16px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Предотвращение масштабирования при двойном тапе */
+        html {
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+    <h1>Мобильный кликер</h1>
+    <div id="score">0 очков</div>
+    <button id="clicker">Кликни меня!</button>
+    <div id="counter">Кликов: 0</div>
+    <button id="reset">Сбросить прогресс</button>
+
+    <script>
+        // Получаем элементы DOM
+        const clickerButton = document.getElementById('clicker');
+        const scoreDisplay = document.getElementById('score');
+        const counterDisplay = document.getElementById('counter');
+        const resetButton = document.getElementById('reset');
+
+        // Загружаем сохраненные данные или устанавливаем значения по умолчанию
+        let score = localStorage.getItem('clickerScore') ? parseInt(localStorage.getItem('clickerScore')) : 0;
+        let clicks = localStorage.getItem('clickerClicks') ? parseInt(localStorage.getItem('clickerClicks')) : 0;
+
+        // Обновляем отображение
+        updateDisplay();
+
+        // Обработчик клика
+        clickerButton.addEventListener('click', function() {
+            score += 1;
+            clicks += 1;
+            saveProgress();
+            updateDisplay();
+            
+            // Анимация кнопки
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 100);
+        });
+
+        // Кнопка сброса
+        resetButton.addEventListener('click', function() {
+            if(confirm('Вы уверены, что хотите сбросить весь прогресс?')) {
+                score = 0;
+                clicks = 0;
+                saveProgress();
+                updateDisplay();
+            }
+        });
+
+        // Функция сохранения прогресса
+        function saveProgress() {
+            localStorage.setItem('clickerScore', score);
+            localStorage.setItem('clickerClicks', clicks);
+        }
+
+        // Функция обновления отображения
+        function updateDisplay() {
+            scoreDisplay.textContent = score + ' очков';
+            counterDisplay.textContent = 'Кликов: ' + clicks;
+        }
+
+        // Предотвращение масштабирования при двойном тапе
+        document.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Для iOS - предотвращение масштабирования
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
