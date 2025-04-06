@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Кликер с улучшенной таблицей лидеров</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: white;
+            margin: 0;
+            padding: 20px;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #game-screen, #leaderboard-screen {
+            transition: opacity 0.3s;
+        }
+        #leaderboard-screen {
+            display: none;
+            opacity: 0;
+        }
+        #clicker {
+            font-size: 24px;
+            padding: 15px 30px;
+            margin: 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #clicker:hover {
+            background-color: #45a049;
+        }
+        #score {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 20px;
+        }
+        #counter {
+            font-size: 18px;
+            margin: 10px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            font-size: 16px;
+        }
+        #reset {
+            background-color: #f44336;
+        }
+        #back-button {
+            background-color: #2196F3;
+            margin-bottom: 20px;
+        }
+        #nickname-container {
+            margin: 15px auto;
+            max-width: 300px;
+        }
+        #nickname {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #nickname-save {
+            margin-top: 10px;
+            width: 100%;
+        }
+        #leaderboard {
+            margin: 20px auto;
+            width: 95%;
+            max-width: 600px;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        #leaderboard th, #leaderboard td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        #leaderboard th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        #leaderboard tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .hidden {
+            display: none !important;
+        }
+        #leaderboard-container {
+            max-height: 60vh;
+            overflow-y: auto;
+            margin: 0 auto;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-screen">
+        <h1>Кликер</h1>
+        
+        <div id="nickname-container" class="hidden">
+            <input type="text" id="nickname" placeholder="Введите ваш никнейм" maxlength="32">
+            <button id="nickname-save">Сохранить ник</button>
+        </div>
+        
+        <div id="score">0 очков</div>
+        <button id="clicker">Кликни меня!</button>
+        <div id="counter">Кликов: 0</div>
+        <button id="reset">Сбросить прогресс</button>
+        <button id="show-leaderboard">Таблица лидеров</button>
+    </div>
+
+    <div id="leaderboard-screen">
+        <h1>Таблица лидеров</h1>
+        <button id="back-button">Вернуться к игре</button>
+        
+        <div id="leaderboard-container">
+            <table id="leaderboard">
+                <thead>
+                    <tr>
+                        <th>Место</th>
+                        <th>Никнейм</th>
+                        <th>Очки</th>
+                        <th>Клики</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- Сюда будут добавляться лидеры -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Получаем элементы DOM
+        const gameScreen = document.getElementById('game-screen');
+        const leaderboardScreen = document.getElementById('leaderboard-screen');
+        const clickerButton = document.getElementById('clicker');
+        const scoreDisplay = document.getElementById('score');
+        const counterDisplay = document.getElementById('counter');
+        const resetButton = document.getElementById('reset');
+        const nicknameContainer = document.getElementById('nickname-container');
+        const nicknameInput = document.getElementById('nickname');
+        const nicknameSave = document.getElementById('nickname-save');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        const showLeaderboardBtn = document.getElementById('show-leaderboard');
+        const backButton = document.getElementById('back-button');
+
+        // Загружаем сохраненные данные
+        let score = localStorage.getItem('clickerScore') ? parseInt(localStorage.getItem('clickerScore')) : 0;
+        let clicks = localStorage.getItem('clickerClicks') ? parseInt(localStorage.getItem('clickerClicks')) : 0;
+        let nickname = localStorage.getItem('clickerNickname') || '';
+        let leaderboard = JSON.parse(localStorage.getItem('clickerLeaderboard')) || [];
+
+        // Инициализация
+        if (!nickname) {
+            nicknameContainer.classList.remove('hidden');
+        }
+        updateDisplay();
+        updateLeaderboard();
+
+        // Обработчик клика
+        clickerButton.addEventListener('click', function() {
+            score += 1;
+            clicks += 1;
+            saveProgress();
+            updateDisplay();
+            
+            // Автоматически обновляем таблицу лидеров при каждом клике
+            if (nickname) {
+                updatePlayerInLeaderboard();
+            }
+            
+            // Анимация кнопки
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 100);
+        });
+
+        // Кнопка сброса
+        resetButton.addEventListener('click', function() {
+            if(confirm('Вы уверены, что хотите сбросить весь прогресс?')) {
+                score = 0;
+                clicks = 0;
+                saveProgress();
+                updateDisplay();
+                
+                if (nickname) {
+                    updatePlayerInLeaderboard();
+                }
+            }
+        });
+
+        // Сохранение ника (только один раз)
+        nicknameSave.addEventListener('click', function() {
+            const newNickname = nicknameInput.value.trim();
+            if (newNickname) {
+                nickname = newNickname;
+                localStorage.setItem('clickerNickname', nickname);
+                nicknameContainer.classList.add('hidden');
+                
+                // Добавляем текущий результат в таблицу лидеров
+                updatePlayerInLeaderboard();
+            } else {
+                alert('Пожалуйста, введите никнейм!');
+            }
+        });
+
+        // Показать таблицу лидеров
+        showLeaderboardBtn.addEventListener('click', function() {
+            gameScreen.style.opacity = '0';
+            setTimeout(() => {
+                gameScreen.style.display = 'none';
+                leaderboardScreen.style.display = 'block';
+                setTimeout(() => {
+                    leaderboardScreen.style.opacity = '1';
+                }, 10);
+            }, 300);
+        });
+
+        // Вернуться к игре
+        backButton.addEventListener('click', function() {
+            leaderboardScreen.style.opacity = '0';
+            setTimeout(() => {
+                leaderboardScreen.style.display = 'none';
+                gameScreen.style.display = 'block';
+                setTimeout(() => {
+                    gameScreen.style.opacity = '1';
+                }, 10);
+            }, 300);
+        });
+
+        // Функция сохранения прогресса
+        function saveProgress() {
+            localStorage.setItem('clickerScore', score);
+            localStorage.setItem('clickerClicks', clicks);
+        }
+
+        // Функция обновления отображения
+        function updateDisplay() {
+            scoreDisplay.textContent = score + ' очков';
+            counterDisplay.textContent = 'Кликов: ' + clicks;
+        }
+
+        // Функция обновления игрока в таблице лидеров
+        function updatePlayerInLeaderboard() {
+            if (!nickname) return;
+            
+            // Находим игрока в таблице лидеров
+            let playerIndex = leaderboard.findIndex(item => item.name === nickname);
+            
+            if (playerIndex === -1) {
+                // Если игрока нет, добавляем нового
+                leaderboard.push({
+                    name: nickname,
+                    score: score,
+                    clicks: clicks,
+                    date: new Date().toISOString()
+                });
+            } else {
+                // Если игрок есть, обновляем его данные
+                leaderboard[playerIndex].score = score;
+                leaderboard[playerIndex].clicks = clicks;
+                leaderboard[playerIndex].date = new Date().toISOString();
+            }
+            
+            // Сортируем по очкам (по убыванию)
+            leaderboard.sort((a, b) => b.score - a.score);
+            
+            // Ограничиваем таблицу лидеров (200 лучших)
+            if (leaderboard.length > 200) {
+                leaderboard = leaderboard.slice(0, 200);
+            }
+            
+            // Сохраняем
+            localStorage.setItem('clickerLeaderboard', JSON.stringify(leaderboard));
+            updateLeaderboard();
+        }
+
+        // Функция обновления таблицы лидеров
+        function updateLeaderboard() {
+            leaderboardBody.innerHTML = '';
+            
+            leaderboard.forEach((player, index) => {
+                const row = document.createElement('tr');
+                
+                // Выделяем текущего игрока
+                if (player.name === nickname) {
+                    row.style.backgroundColor = '#e6f7ff';
+                }
+                
+                const placeCell = document.createElement('td');
+                placeCell.textContent = index + 1;
+                
+                const nameCell = document.createElement('td');
+                nameCell.textContent = player.name;
+                
+                const scoreCell = document.createElement('td');
+                scoreCell.textContent = player.score;
+                
+                const clicksCell = document.createElement('td');
+                clicksCell.textContent = player.clicks;
+                
+                row.appendChild(placeCell);
+                row.appendChild(nameCell);
+                row.appendChild(scoreCell);
+                row.appendChild(clicksCell);
+                
+                leaderboardBody.appendChild(row);
+            });
+        }
+
+        // Предотвращение масштабирования при двойном тапе
+        document.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // При закрытии страницы сохраняем результат
+        window.addEventListener('beforeunload', function(e) {
+            if (nickname) {
+                updatePlayerInLeaderboard();
+            }
+        });
+    </script>
+</body>
+</html>
